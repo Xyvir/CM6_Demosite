@@ -1,0 +1,144 @@
+name: Build and Release TiddlyWiki
+run-name: Build ${{ inputs.create_release == true && '(Release)' || '(Dry Run)' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Create a Release'
+        required: true
+        type: boolean
+        default: false
+      build_config:
+        description: 'Build Configuration'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+        - prod
+        - pre
+        - dev
+        - all
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.tag.outputs.date }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Mirror External Plugins
+        run: npm run mirror
+
+      - name: Flatten Plugins
+        run: node scripts/flatten-plugins.js
+
+      - name: Generate All Plugin Info
+        if: inputs.build_config == 'all'
+        run: node scripts/generate-all-info.js
+
+      - name: Generate Build Config
+        run: node scripts/generate-config.js ${{ inputs.build_config }}
+
+      - name: Build TiddlyWiki
+        env:
+          TIDDLYWIKI_PLUGIN_PATH: '${{ github.workspace }}/wiki:${{ github.workspace }}/wiki/plugins'
+          TIDDLYWIKI_THEME_PATH: '${{ github.workspace }}/wiki/themes'
+        run: npx tiddlywiki wiki --build index 2>&1 | tee wiki/tiddlywiki.log
+
+      - name: Rename Output
+        run: mv wiki/output/index.html wiki/output/lith.html
+
+      - name: Brand Output
+        run: |
+          sed -i 's/content="TiddlyWiki"/content="Lithic PKMS"/g' wiki/output/lith.html
+
+      - name: Commit Built Wiki to src/lithic.html (prod release)
+        if: ${{ inputs.create_release == true && inputs.build_config == 'prod' }}
+        run: |
+          cp wiki/output/lith.html src/lithic.html
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add src/lithic.html
+          git diff --cached --quiet || git commit -m "Update src/lithic.html from build-${{ steps.tag.outputs.date }}"
+          git push
+
+      - name: Commit Built Wiki to repo root (non-prod)
+        if: ${{ inputs.build_config != 'prod' }}
+        run: |
+          cp wiki/output/lith.html ${{ inputs.build_config }}.html
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ${{ inputs.build_config }}.html
+          git diff --cached --quiet || git commit -m "Update ${{ inputs.build_config }}.html from build"
+          git push
+
+      - name: Archive Wiki Folder
+        run: zip -r wiki.zip wiki
+
+      - name: Generate Release Tag
+        if: ${{ inputs.create_release == true && inputs.build_config == 'prod' }}
+        id: tag
+        run: echo "date=$(date +'%Y.%m.%d-%H%M')" >> $GITHUB_OUTPUT
+
+      - name: Upload Built Wiki Artifact
+        if: ${{ inputs.create_release == true && inputs.build_config == 'prod' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-wiki
+          path: wiki/output/lith.html
+          retention-days: 1
+
+      - name: Create Release
+        if: ${{ inputs.create_release == true && inputs.build_config == 'prod' }}
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: build-${{ steps.tag.outputs.date }}
+          name: Build ${{ steps.tag.outputs.date }}
+          draft: false
+          prerelease: false
+          files: |
+            wiki/output/lith.html
+            wiki.zip
+            wiki/flatten-manifest.log
+
+      - name: Upload Build Artifacts (Dry Run)
+        if: ${{ inputs.create_release == false }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts-dry-run
+          path: wiki/output/lith.html
+
+      - name: Upload Debug Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-logs hiding
+          path: |
+            wiki/mirror.log
+            wiki/flatten-manifest.log
+
+            wiki/tiddlywiki.log
+
+  build-tauri:
+
+    needs: build
+    if: ${{ inputs.create_release == true && inputs.build_config == 'prod' }}
+    uses: ./.github/workflows/windows-release.yaml
+    with:
+      tag_name: build-${{ needs.build.outputs.tag_name }}
+    secrets: inherit
+
