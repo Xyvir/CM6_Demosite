@@ -33,15 +33,15 @@ jobs:
         run: npx tiddlywiki cm6-wiki --build index 2>&1 | tee cm6-wiki/tiddlywiki.log
 
       - name: Rename Output
-        run: mv cm6-wiki/output/index.html cm6-wiki/output/wiki.html
+        run: mv cm6-wiki/output/index.html cm6-wiki/output/index.html
 
       - name: Commit Built Wiki to repo root
         run: |
-          cp cm6-wiki/output/wiki.html wiki.html
+          cp cm6-wiki/output/index.html index.html
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add wiki.html
-          git diff --cached --quiet || git commit -m "Update wiki.html from CM6 build"
+          git add index.html
+          git diff --cached --quiet || git commit -m "Update index.html from CM6 build"
           git push
 
       - name: Archive Wiki Folder
@@ -51,7 +51,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cm6-build-artifacts
-          path: cm6-wiki/output/wiki.html
+          path: cm6-wiki/output/index.html
 
       - name: Create Release
         if: github.event_name == 'workflow_dispatch'
@@ -62,5 +62,5 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            cm6-wiki/output/wiki.html
+            cm6-wiki/output/index.html
             cm6-wiki.zip
