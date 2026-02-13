@@ -32,8 +32,6 @@ jobs:
           TIDDLYWIKI_THEME_PATH: '${{ github.workspace }}/themes'
         run: npx tiddlywiki cm6-wiki --build index 2>&1 | tee cm6-wiki/tiddlywiki.log
 
-      - name: Rename Output
-        run: mv cm6-wiki/output/index.html cm6-wiki/output/index.html
 
       - name: Commit Built Wiki to repo root
         run: |
