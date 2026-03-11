@@ -26,6 +26,9 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
+      - name: Generate CM6 Config
+        run: node scripts/generate-cm6-info.js
+
       - name: Build CM6 Wiki
         env:
           TIDDLYWIKI_PLUGIN_PATH: '${{ github.workspace }}/plugins'
