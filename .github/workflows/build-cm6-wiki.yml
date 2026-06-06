@@ -3,6 +3,8 @@ run-name: Build CM6 Wiki
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 * * * *'
   push:
     paths:
       - 'cm6-wiki/**'
@@ -17,6 +19,16 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch and Merge Upstream
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/BurningTreeC/tiddlywiki-codemirror.git
+          git fetch upstream
+          git merge upstream/codemirror-6 --no-edit || git merge --abort
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
