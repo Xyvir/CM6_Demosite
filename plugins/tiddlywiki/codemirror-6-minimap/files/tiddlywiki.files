@@ -1,18 +1,18 @@
 {
     "tiddlers": [
         {
-            "file": "codemirror-emacs.js",
+            "file": "codemirror-minimap.js",
             "fields": {
                 "type": "application/javascript",
-                "title": "$:/plugins/tiddlywiki/codemirror-6-keymap-emacs/codemirror-emacs.js",
+                "title": "$:/plugins/tiddlywiki/codemirror-6-minimap/codemirror-minimap.js",
                 "module-type": "library"
             }
         },
         {
-            "file": "plugin.js",
+            "file": "minimap.js",
             "fields": {
                 "type": "application/javascript",
-                "title": "$:/plugins/tiddlywiki/codemirror-6-keymap-emacs/plugin.js",
+                "title": "$:/plugins/tiddlywiki/codemirror-6-minimap/minimap.js",
                 "module-type": "codemirror6-plugin"
             }
         }
